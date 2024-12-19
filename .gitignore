@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+
+# Log files
+*.log
+
+# Editor directories and files
+.vscode/
+.idea/
+.pytest_cache
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+
+# database
+sql_app.db

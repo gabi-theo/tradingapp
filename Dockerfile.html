@@ -1,0 +1,11 @@
+# Use Nginx as the base image
+FROM nginx:alpine
+
+# Copy your HTML file to the default Nginx HTML directory
+COPY ./frontend/index.html /usr/share/nginx/html/index.html
+
+# Expose port 80 to serve the HTML page
+EXPOSE 80
+
+# Run Nginx
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Add Chart.js -->
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Trading Dashboard</h1>
+        <button 
+          id="uploadExcelButton"
+          class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
+        >
+          Upload Excel
+        </button>
+        <input type="file" id="excelInput" class="hidden" accept=".xlsx, .xls" />
+      </div>
+  
+      <!-- Filters -->
+      <div class="bg-white shadow p-4 rounded mb-6">
+        <h2 class="text-lg font-semibold mb-2">Filters</h2>
+        <div class="flex flex-wrap gap-4">
+          <input 
+            type="text" 
+            placeholder="Search positions..." 
+            class="border border-gray-300 rounded p-2 flex-1"
+          />
+          <select class="border border-gray-300 rounded p-2 flex-1">
+            <option value="">Filter by date</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+          <button 
+            class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded"
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
+  
+      <!-- Tables Row -->
+      <div class="grid grid-cols-2 gap-6 mb-6">
+        <!-- Table: Current Positions (Half Width) -->
+        <!-- Recent Trades -->
+      <div class="bg-white shadow rounded p-4">
+        <h2 class="text-lg font-semibold mb-4">Recent Trades</h2>
+        <table class="table-auto w-full text-left">
+          <thead>
+            <tr>
+              <th class="border-b py-2">Direction</th>
+              <th class="border-b py-2">Symbol</th>
+              <th class="border-b py-2">Quantity</th>
+              <th class="border-b py-2">Price</th>
+              <th class="border-b py-2">Date</th>
+            </tr>
+          </thead>
+          <tbody id="recentTradesTableBody">
+            <!-- Trade entries will be populated here -->
+          </tbody>
+        </table>
+      </div>
+  
+      <div class="bg-white shadow rounded p-4">
+        <h2 class="text-lg font-semibold mb-4">Current positions</h2>
+        <table class="table-auto w-full text-left">
+          <thead>
+            <tr>
+              <th class="border-b py-2">Date</th>
+              <th class="border-b py-2">Symbol</th>
+              <th class="border-b py-2">Direction</th>
+              <th class="border-b py-2">Close</th>
+              <th class="border-b py-2">Current Position</th>
+              <th class="border-b py-2">Total Cost</th>
+            </tr>
+          </thead>
+          <tbody id="currentPositionsTableBody">
+            <!-- Trade entries will be populated here -->
+          </tbody>
+        </table>
+      </div>
+      </div>
+      <!-- Daily P&L Chart -->
+      <div class="grid grid-cols-1 gap-6 mb-6">
+        <div class="bg-white shadow rounded p-4">
+          <h2 class="text-lg font-semibold mb-4">Daily P&L</h2>
+          <canvas id="dailyPnlChart" class="rounded"></canvas>
+        </div>
+      </div>
+    </div>
+  </body>
+  
+
+  <script>
+    const uploadExcelButton = document.getElementById('uploadExcelButton');
+    const excelInput = document.getElementById('excelInput');
+
+    uploadExcelButton.addEventListener('click', () => {
+      excelInput.click();
+    });
+
+    excelInput.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('http://localhost:8000/api/upload-excel/', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.status === 200) {
+          alert('File uploaded successfully!');
+        } else {
+          alert(`Failed to upload file. Reason: ${await response.text()}`);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert(`An error occurred while uploading the file: ${error}`);
+      }
+    });
+
+    // Fetch daily PnL data and populate the chart
+    async function fetchDailyPnlChart() {
+      try {
+        const response = await fetch('http://localhost:8000/api/daily-pnl/?symbol=TSLA&start_date=2024-12-01&end_date=2024-12-20');
+        const pnlData = await response.json();
+
+        const labels = pnlData.map(item => item.date);
+        const realizedPnl = pnlData.map(item => item.realized_pnl);
+        const unrealizedPnl = pnlData.map(item => item.unrealized_pnl);
+        const totalUnrealizedPnl = pnlData.map(item => item.total_unrealized_pnl);
+
+        // Create the chart
+        const ctx = document.getElementById('dailyPnlChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Realized PnL',
+                data: realizedPnl,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.4,
+              },
+              {
+                label: 'Unrealized PnL',
+                data: unrealizedPnl,
+                borderColor: 'rgb(255, 159, 64)',
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                tension: 0.4,
+              },
+              {
+                label: 'Total Unrealized PnL',
+                data: totalUnrealizedPnl,
+                borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                tension: 0.4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+            },
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Date',
+                },
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'PnL Value',
+                },
+              },
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Error fetching PnL data:', error);
+        alert('An error occurred while fetching daily PnL data.');
+      }
+    }
+
+     // Fetch recent trades and populate the table
+    async function fetchRecentTrades() {
+        try {
+            const response = await fetch('http://localhost:8000/api/trades/');
+            const trades = await response.json();
+
+            const recentTradesTableBody = document.getElementById('recentTradesTableBody');
+            recentTradesTableBody.innerHTML = ''; // Clear existing entries
+
+            trades.forEach(trade => {
+            const row = document.createElement('tr');
+                console.log(trade)
+            // Add trade details as table cells
+            row.innerHTML = `
+            <td class="border-b py-2 capitalize">${trade.direction}</td>
+            <td class="border-b py-2">${trade.company_symbol}</td>
+            <td class="border-b py-2">${trade.quantity}</td>
+            <td class="border-b py-2">$${trade.price}</td>
+            <td class="border-b py-2">${new Date(trade.date).toLocaleDateString()}</td>
+            `;
+
+            recentTradesTableBody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Error fetching trades:', error);
+            alert('An error occurred while fetching recent trades.');
+        }
+    }
+
+    async function fetchCurrentPosition() {
+        try {
+            const response = await fetch('http://localhost:8000/api/current-position/');
+            const trades = await response.json();
+
+            const recentTradesTableBody = document.getElementById('currentPositionsTableBody');
+            recentTradesTableBody.innerHTML = ''; // Clear existing entries
+
+            trades.forEach(trade => {
+            const row = document.createElement('tr');
+            // Add trade details as table cells
+            row.innerHTML = `
+            <td class="border-b py-2 capitalize">${new Date(trade.date).toLocaleDateString()}</td>
+            <td class="border-b py-2">${trade.symbol}</td>
+            <td class="border-b py-2">${trade.direction}</td>
+            <td class="border-b py-2">$${trade.close}</td>
+            <td class="border-b py-2">${trade.current_position}</td>
+            <td class="border-b py-2">${trade.total_cost}</td>
+            `;
+
+            recentTradesTableBody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Error fetching trades:', error);
+            alert('An error occurred while fetching recent trades.');
+        }
+    }
+
+    fetchDailyPnlChart();
+    fetchCurrentPosition();
+    fetchRecentTrades();
+  </script>
+
+</body>
+</html>
